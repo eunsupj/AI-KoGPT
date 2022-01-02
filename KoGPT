@@ -1,1 +1,28 @@
+import torch
+from transformers import AutoTokenizer, AutoModelForCausalLM
+## CPU로 RAM 16GB 활용할 경우 실행할 코드 (float16)
+print("Model loading start")
 
+tokenizer = AutoTokenizer.from_pretrained(
+  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+  bos_token='[BOS]', eos_token='[EOS]', unk_token='[UNK]', pad_token='[PAD]', mask_token='[MASK]'
+)
+model = AutoModelForCausalLM.from_pretrained(
+  'kakaobrain/kogpt', revision='KoGPT6B-ryan1.5b-float16',
+  pad_token_id=tokenizer.eos_token_id,
+  torch_dtype=torch.float16, low_cpu_mem_usage=True
+).to(device='cpu', non_blocking=True)
+_ = model.eval()
+
+print("Model loading done")
+#need to change max_length if a prompt gets longer
+def gpt(prompt):
+  with torch.no_grad():
+    tokens = tokenizer.encode(prompt, return_tensors='pt').to(device='cpu', non_blocking=True)
+    gen_tokens = model.generate(tokens, do_sample=True, temperature=0.8, max_length=256)
+    generated = tokenizer.batch_decode(gen_tokens)[0]
+
+  return generated
+  
+  prompt = """그러면 대화가 가능한 현존 최고 수준의 인공지능과의 인터뷰를 진행해보겠습니다. Q: 인공지능님 안녕하세요. 만나서 반갑습니다. 조코딩 구독자 분들에게 인사한번 부탁드립니다. A: """
+gpt(prompt)
